@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from simple_history.models import HistoricalRecords
 
@@ -17,6 +18,19 @@ class PointOfSale(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class PointOfSaleToken(models.Model):
+    pos = models.OneToOneField(PointOfSale, verbose_name="Точка продаж", on_delete=models.CASCADE, related_name="api_token")
+    key = models.CharField("Токен", max_length=40, unique=True, default=uuid.uuid4)
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "POS-токен"
+        verbose_name_plural = "POS-токены"
+
+    def __str__(self):
+        return f"{self.pos.name} token"
 
 
 class Category(models.Model):

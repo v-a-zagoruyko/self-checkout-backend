@@ -5,10 +5,12 @@ from django.db import transaction, connections
 from django.db.utils import OperationalError
 from celery import Celery
 from rest_framework import serializers, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from pos.models import Product, PointOfSale, Stock, Order, OrderItem, Payment, Receipt
 from pos.flow import OrderFlow, PaymentFlow
+from pos.auth import POSTokenAuthentication
 from .serializers import ProductSerializer, OrderCreateSerializer
 
 from decimal import Decimal
@@ -23,6 +25,8 @@ def send_to_acquiring(payment: Payment):
     return f"https://fake-acquiring.com/pay/{uuid.uuid4()}"
 
 @api_view(['GET'])
+@authentication_classes([POSTokenAuthentication])
+@permission_classes([IsAuthenticated])
 def product_by_barcode(request, barcode):
     pos_code = request.GET.get("pos_code")
 
@@ -42,6 +46,8 @@ def product_by_barcode(request, barcode):
     return Response(serializer.data)
 
 @api_view(['POST'])
+@authentication_classes([POSTokenAuthentication])
+@permission_classes([IsAuthenticated])
 def create_order(request):
     serializer = OrderCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -84,6 +90,8 @@ def create_order(request):
     return Response({"order_id": order.id, "total_price": order.total_price})
 
 @api_view(['POST'])
+@authentication_classes([POSTokenAuthentication])
+@permission_classes([IsAuthenticated])
 def create_payment(request):
     order_id = request.data.get("order_id")
     payment_type = request.data.get("payment_type")
@@ -110,6 +118,8 @@ def create_payment(request):
     return Response({"payment_id": payment.id, "payment_url": payment.payment_url})
 
 @api_view(['GET'])
+@authentication_classes([POSTokenAuthentication])
+@permission_classes([IsAuthenticated])
 def order_status(request, order_id):
     if not order_id:
         return Response({"error": "order_id обязателен"}, status=400)

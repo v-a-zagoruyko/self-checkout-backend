@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.http import HttpResponseRedirect
 from .flow import OrderFlow, PaymentFlow
 from .models import (
-    PointOfSale, Category, Product, Stock,
+    PointOfSale, PointOfSaleToken, Category, Product, Stock,
     Order, OrderItem, OrderComment,
     Payment, Receipt
 )
@@ -23,6 +23,27 @@ class PointOfSaleAdmin(SimpleHistoryAdmin):
     readonly_fields = ["created_at", "updated_at"]
     search_fields = ["name", "code"]
     list_filter = ["status"]
+
+
+@admin.register(PointOfSaleToken)
+class PointOfSaleTokenAdmin(admin.ModelAdmin):
+    list_display = ["key", "pos", "created_at"]
+    list_filter = ["pos"]
+    search_fields = ["key", "pos__name"]
+    readonly_fields = ["key", "created_at"]
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        if '_gen_key' in request.POST:
+            order = self.get_object(request, object_id)
+            order_flow = OrderFlow(order)
+            order_flow.archive()
+            self.message_user(request, "Новый токен сгенерирован!")
+            logger.info(f"Order {order.id} was archivated")
+            return HttpResponseRedirect(request.path)
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Category)
