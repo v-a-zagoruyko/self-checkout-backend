@@ -1,6 +1,9 @@
+import os
 import logging
+import redis
 from django.db import transaction, connections
 from django.db.utils import OperationalError
+from celery import Celery
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -12,6 +15,9 @@ from decimal import Decimal
 import uuid
 
 logger = logging.getLogger(__name__)
+app = Celery("core")
+
+REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 
 def send_to_acquiring(payment: Payment):
     return f"https://fake-acquiring.com/pay/{uuid.uuid4()}"
@@ -179,8 +185,32 @@ def mark_payment_failed(request):
 
 @api_view(['GET'])
 def health(request):
+    status = {"db": True, "redis": True, "celery": True, "status": "ok"}
+
     try:
         connections['default'].cursor()
     except OperationalError:
-        return Response({"status": "error", "db": False}, status=500)
-    return Response({"status": "ok", "db": True})
+        status["db"] = False
+        status["status"] = "error"
+        logger.error("DB health check failed", exc_info=e)
+
+    try:
+        r = redis.Redis.from_url(REDIS_URL)
+        r.ping()
+    except redis.exceptions.RedisError:
+        status["redis"] = False
+        status["status"] = "error"
+        logger.error("Redis health check failed", exc_info=e)
+
+    try:
+        insp = app.control.inspect(timeout=1)
+        if not insp.ping():
+            status["celery"] = False
+            status["status"] = "error"
+            logger.error("Celery health check failed: no workers responding")
+    except Exception:
+        status["celery"] = False
+        status["status"] = "error"
+        logger.error("Celery health check failed", exc_info=e)
+
+    return Response(status)
