@@ -1,8 +1,8 @@
+import logging
 from celery import shared_task
 from django.db import transaction
 from pos.models import Order, Payment
 from pos.flow import OrderFlow, PaymentFlow
-import logging
 
 logger = logging.getLogger(__name__)
 

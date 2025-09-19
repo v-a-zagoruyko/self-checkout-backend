@@ -1,3 +1,4 @@
+import logging
 from django.contrib import admin
 from django.http import HttpResponseRedirect
 from .flow import OrderFlow, PaymentFlow
@@ -7,6 +8,8 @@ from .models import (
     Payment, Receipt
 )
 from simple_history.admin import SimpleHistoryAdmin
+
+logger = logging.getLogger(__name__)
 
 admin.site.site_header = "Администрирование"
 admin.site.site_title = "Администрирование"
@@ -83,6 +86,7 @@ class OrderAdmin(admin.ModelAdmin):
             order_flow = OrderFlow(order)
             order_flow.archive()
             self.message_user(request, "Заказ отправлен в архив!")
+            logger.info(f"Order {order.id} was archivated")
             return HttpResponseRedirect(request.path)
         return super().change_view(request, object_id, form_url, extra_context)
 
