@@ -1,6 +1,7 @@
 import os
 import environ
 from pathlib import Path
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,18 +12,24 @@ env = environ.Env(
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
-DEBUG = env("DJANGO_DEBUG")
+DEBUG = env.bool("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
+
+CELERY_BROKER_URL = env("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "rest_framework",
     "viewflow",
+    "django_celery_beat",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "core",
     "pos",
     "api",
 ]
@@ -83,6 +90,13 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+CELERY_BEAT_SCHEDULE = {
+    "archive-created-orders-every-hour": {
+        "task": "archive_created_orders",
+        "schedule": crontab(minute=0, hour="*"),
+    },
+}
 
 LOGGING = {
 	"version": 1,
