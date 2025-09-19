@@ -36,6 +36,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
+    "rollbar.contrib.django.middleware.RollbarNotifierMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -82,6 +83,41 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+LOGGING = {
+	"version": 1,
+	"disable_existing_loggers": False,
+	"formatters": {
+		"json": {
+			"()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+			"format": "%(asctime)s %(levelname)s %(name)s %(message)s"
+		}
+	},
+	"handlers": {
+		"console": {
+			"class": "logging.StreamHandler",
+			"formatter": "json"
+		},
+		"rollbar": {
+			"class": "rollbar.logger.RollbarHandler",
+			"level": "WARNING"
+		},
+	},
+	"loggers": {
+		"": {
+			"handlers": ["console", "rollbar"],
+			"level": "INFO",
+            "propagate": True
+		}
+	}
+}
+
+ROLLBAR = {
+    "access_token": env("ROLLBAR_TOKEN"),
+    "environment": "development" if DEBUG else "production",
+    "code_version": "1.0",
+    "root": BASE_DIR,
+}
 
 LANGUAGE_CODE = "ru-ru"
 
