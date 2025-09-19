@@ -1,4 +1,6 @@
-from django.db import transaction
+import logging
+from django.db import transaction, connections
+from django.db.utils import OperationalError
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -8,6 +10,8 @@ from .serializers import ProductSerializer, OrderCreateSerializer
 
 from decimal import Decimal
 import uuid
+
+logger = logging.getLogger(__name__)
 
 def send_to_acquiring(payment: Payment):
     return f"https://fake-acquiring.com/pay/{uuid.uuid4()}"
@@ -41,21 +45,20 @@ def create_order(request):
     try:
         pos = PointOfSale.objects.get(code=pos_code)
     except PointOfSale.DoesNotExist:
+        logger.warning("POS not found", extra={"pos_code": pos_code})
         return Response({"error": "Точка продаж не найдена"}, status=404)
 
     try:
         with transaction.atomic():
             order = Order.objects.create(pos=pos)
-
             total = 0
             for item_data in order_items_data:
-                try:
-                    product = Product.objects.get(barcode=item_data['barcode'])
-                except Product.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"Продукт с штрихкодом {item_data['barcode']} не найден"
-                    )
-
+                product = Product.objects.select_for_update().filter(barcode=item_data['barcode']).first()
+                if not product:
+                    raise serializers.ValidationError(f"Продукт с штрихкодом {item_data['barcode']} не найден")
+                stock = Stock.objects.select_for_update().filter(pos=pos, product=product).first()
+                if not stock or stock.quantity < item_data['quantity'] or not stock.available_for_sale:
+                    logger.info(f"Заказ №{order.id}, Недостаточно товара {product.name}")
                 order_item = OrderItem.objects.create(
                     order=order,
                     product=product,
@@ -63,13 +66,15 @@ def create_order(request):
                     price=product.price
                 )
                 total += order_item.total_price
-
+                stock.quantity -= item_data['quantity']
+                stock.save()
             order.total_price = total
             order.save()
-
     except serializers.ValidationError as e:
-        return Response({"error": str(e)}, status=404)
+        logger.info("Create order validation failed", extra={"error": str(e)})
+        return Response({"error": str(e)}, status=400)
 
+    logger.info("Order created", extra={"order_id": order.id, "total": str(order.total_price)})
     return Response({"order_id": order.id, "total_price": order.total_price})
 
 @api_view(['POST'])
@@ -81,22 +86,22 @@ def create_payment(request):
         return Response({"error": "order_id и payment_type обязательны"}, status=400)
 
     try:
-        order = Order.objects.get(id=order_id)
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            payment = order.payments.filter(state=Payment.PaymentState.PENDING).first()
+            if not payment:
+                payment = Payment.objects.create(
+                    order=order,
+                    state=Payment.PaymentState.PENDING,
+                    payment_type=payment_type
+                )
+                payment.payment_url = send_to_acquiring(payment)
+                payment.save()
     except Order.DoesNotExist:
         return Response({"error": "Заказ не найден"}, status=404)
 
-    payment = order.payments.filter(state=Payment.PaymentState.PENDING).first()
-    if not payment:
-        payment = Payment.objects.create(
-            order=order,
-            state=Payment.PaymentState.PENDING,
-            payment_type=payment_type
-        )
-        payment.payment_url = send_to_acquiring(payment)
-        payment.save()
-
+    logger.info("Payment created", extra={"payment_id": payment.id, "order_id": order.id})
     return Response({"payment_id": payment.id, "payment_url": payment.payment_url})
-
 
 @api_view(['GET'])
 def order_status(request, order_id):
@@ -110,7 +115,6 @@ def order_status(request, order_id):
 
     return Response({"state": order.state})
 
-
 @api_view(['POST'])
 def mark_payment_paid(request):
     order_id = request.data.get("order_id")
@@ -118,25 +122,28 @@ def mark_payment_paid(request):
         return Response({"error": "order_id обязателен"}, status=400)
 
     try:
-        order = Order.objects.get(id=order_id)
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            payment = order.payments.select_for_update().filter(state=Payment.PaymentState.PENDING).first()
+            if not payment:
+                existing = order.payments.filter(state=Payment.PaymentState.PAID).first()
+                if existing:
+                    logger.info("Payment already paid", extra={"order_id": order.id, "payment_id": existing.id})
+                    return Response({"message": "Оплата уже помечена как PAID"})
+                return Response({"error": "Нет PENDING платежа"}, status=404)
+            order_flow = OrderFlow(order)
+            order_flow.mark_paid()
+            payment_flow = PaymentFlow(payment)
+            payment_flow.mark_paid()
+            Receipt.objects.create(
+                payment=payment,
+                receipt_number=str(uuid.uuid4()),
+                fiscal_data=[{"name": item.product.name, "qty": item.quantity, "price": float(item.price)} for item in order.items.all()]
+            )
     except Order.DoesNotExist:
         return Response({"error": "Заказ не найден"}, status=404)
 
-    payment = order.payments.filter(state=Payment.PaymentState.PENDING).first()
-    if not payment:
-        return Response({"error": "Нет PENDING платежа"}, status=404)
-
-    # TODO: разрулить транзакции
-    order_flow = OrderFlow(order)
-    order_flow.mark_paid()
-    payment_flow = PaymentFlow(payment)
-    payment_flow.mark_paid()
-    Receipt.objects.create(
-        payment=payment,
-        receipt_number=str(uuid.uuid4()),
-        fiscal_data=[{"name": item.product.name, "qty": item.quantity, "price": float(item.price)} for item in order.items.all()]
-    )
-
+    logger.info("Payment marked paid", extra={"order_id": order.id, "payment_id": payment.id})
     return Response({"message": "Оплата помечена как PAID"})
 
 @api_view(['POST'])
@@ -146,18 +153,34 @@ def mark_payment_failed(request):
         return Response({"error": "order_id обязателен"}, status=400)
 
     try:
-        order = Order.objects.get(id=order_id)
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            payment = order.payments.select_for_update().filter(state=Payment.PaymentState.PENDING).first()
+            if not payment:
+                existing_failed = order.payments.filter(state=Payment.PaymentState.FAILED).first()
+                if existing_failed:
+                    logger.info("Payment already failed", extra={"order_id": order.id, "payment_id": existing_failed.id})
+                    return Response({"message": "Оплата уже помечена как FAILED"})
+                existing_paid = order.payments.filter(state=Payment.PaymentState.PAID).first()
+                if existing_paid:
+                    logger.warning("Tried to mark payment failed, but already paid", extra={"order_id": order.id, "payment_id": existing_paid.id})
+                    return Response({"error": "Оплата уже проведена (PAID), нельзя пометить как FAILED"}, status=400)
+                return Response({"error": "Нет PENDING платежа"}, status=404)
+
+            order_flow = OrderFlow(order)
+            order_flow.mark_cancelled()
+            payment_flow = PaymentFlow(payment)
+            payment_flow.mark_failed()
     except Order.DoesNotExist:
         return Response({"error": "Заказ не найден"}, status=404)
 
-    payment = order.payments.filter(state=Payment.PaymentState.PENDING).first()
-    if not payment:
-        return Response({"error": "Нет PENDING платежа"}, status=404)
-
-    # TODO: разрулить транзакции
-    order_flow = OrderFlow(order)
-    order_flow.mark_cancelled()
-    payment_flow = PaymentFlow(payment)
-    payment_flow.mark_failed()
-
+    logger.info("Payment marked failed", extra={"order_id": order.id, "payment_id": payment.id})
     return Response({"message": "Оплата помечена как FAILED"})
+
+@api_view(['GET'])
+def health(request):
+    try:
+        connections['default'].cursor()
+    except OperationalError:
+        return Response({"status": "error", "db": False}, status=500)
+    return Response({"status": "ok", "db": True})

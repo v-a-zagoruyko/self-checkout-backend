@@ -43,7 +43,6 @@ class StockAdmin(SimpleHistoryAdmin):
     list_display = ["product", "pos", "quantity", "available_for_sale"]
     list_filter = ["pos", "available_for_sale"]
     search_fields = ["product__name", "pos__name"]
-    readonly_fields = []
 
     def has_delete_permission(self, request, obj=None):
         return False
