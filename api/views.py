@@ -1,6 +1,7 @@
 import os
 import logging
 import redis
+import uuid
 from django.db import transaction, connections
 from django.db.utils import OperationalError
 from celery import Celery
@@ -14,7 +15,6 @@ from pos.auth import POSTokenAuthentication
 from .serializers import ProductSerializer, OrderCreateSerializer
 
 from decimal import Decimal
-import uuid
 
 logger = logging.getLogger(__name__)
 app = Celery("core")

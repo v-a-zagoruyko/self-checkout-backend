@@ -96,6 +96,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "archive_created_orders",
         "schedule": crontab(minute=0, hour="*"),
     },
+    "daily-orders-report": {
+        "task": "daily_orders_report",
+        "schedule": crontab(hour=22, minute=0),
+    },
 }
 
 LOGGING = {
