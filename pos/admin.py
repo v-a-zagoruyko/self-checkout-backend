@@ -1,3 +1,4 @@
+import uuid
 import logging
 from django.contrib import admin
 from django.http import HttpResponseRedirect
@@ -34,11 +35,13 @@ class PointOfSaleTokenAdmin(admin.ModelAdmin):
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         if '_gen_key' in request.POST:
-            order = self.get_object(request, object_id)
-            order_flow = OrderFlow(order)
-            order_flow.archive()
-            self.message_user(request, "Новый токен сгенерирован!")
-            logger.info(f"Order {order.id} was archivated")
+            pos_token = self.get_object(request, object_id)
+            if pos_token:
+                new_token = uuid.uuid4()
+                pos_token.key = new_token
+                pos_token.save(update_fields=['key'])
+                self.message_user(request, f"Новый токен сгенерирован: {new_token}")
+                logger.info(f"Token for POS {pos_token.pos.name} (id={pos_token.pos.id}) was changed")
             return HttpResponseRedirect(request.path)
         return super().change_view(request, object_id, form_url, extra_context)
 
