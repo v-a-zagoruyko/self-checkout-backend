@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg
+*.egg-info/
+*.manifest
+*.spec
+
+# Poetry
+.poetry/
+poetry.lock
+
+# Django
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+.env
+.env.*
+
+# Pytest / test cache
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# VSCode
+.vscode/
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# Docker
+*.dockerfile
+*.env
+docker-compose.override.yml
+docker-compose.override.yml.*
+docker-compose.override.*.yml
+
+# macOS
+.DS_Store
+
+# node_modules (если фронт будет)
+node_modules/
+
+# Coverage / reports
+coverage.xml
+*.cover

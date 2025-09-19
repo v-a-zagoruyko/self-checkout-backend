@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}
+
+{% load static %}
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    <div class="submit-row" style="padding:0; background-color: transparent; border: 0;">
+        <input type="submit" class="button" value="Архивировать" name="_archive" />
+    </div>
+{% endblock %}

@@ -1,3 +1,4 @@
+import os
 import environ
 from pathlib import Path
 
@@ -16,11 +17,14 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
+    "rest_framework",
+    "viewflow",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "pos",
+    "api",
 ]
 
 MIDDLEWARE = [
