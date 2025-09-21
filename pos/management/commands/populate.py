@@ -19,7 +19,7 @@ class Command(BaseCommand):
                 name=fake.company(),
                 code=fake.unique.bothify(text="POS###???"),
                 location=fake.address(),
-                status=True
+                is_active=True
             )
             pos_list.append(pos)
 
@@ -48,7 +48,7 @@ class Command(BaseCommand):
                     pos=pos,
                     product=prod,
                     quantity=random.randint(10, 100),
-                    available_for_sale=random.choice([True, True, True, False])
+                    is_active=random.choice([True, True, True, False])
                 )
 
         # --- Создание заказов ---
@@ -97,7 +97,7 @@ class Command(BaseCommand):
             payment = Payment.objects.create(
                 order=order,
                 state=payment_state,
-                payment_type=random.choice(["card", "sbp"]),
+                type=random.choice(["card", "sbp"]),
                 processed_at=order_date
             )
 

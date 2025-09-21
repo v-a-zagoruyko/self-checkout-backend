@@ -2,13 +2,13 @@ import uuid
 import logging
 from django.contrib import admin
 from django.http import HttpResponseRedirect
+from simple_history.admin import SimpleHistoryAdmin
 from .flow import OrderFlow, PaymentFlow
 from .models import (
     PointOfSale, PointOfSaleToken, Category, Product, Stock,
     Order, OrderItem, OrderComment,
     Payment, Receipt
 )
-from simple_history.admin import SimpleHistoryAdmin
 
 logger = logging.getLogger(__name__)
 
@@ -20,26 +20,26 @@ admin.site.site_url = None
 
 @admin.register(PointOfSale)
 class PointOfSaleAdmin(SimpleHistoryAdmin):
-    list_display = ["name", "code", "location", "status", "created_at", "updated_at"]
+    list_display = ["name", "code", "location", "is_active", "created_at", "updated_at"]
     readonly_fields = ["created_at", "updated_at"]
     search_fields = ["name", "code"]
-    list_filter = ["status"]
+    list_filter = ["is_active"]
 
 
 @admin.register(PointOfSaleToken)
 class PointOfSaleTokenAdmin(admin.ModelAdmin):
-    list_display = ["key", "pos", "created_at"]
+    list_display = ["token", "pos", "created_at"]
     list_filter = ["pos"]
-    search_fields = ["key", "pos__name"]
-    readonly_fields = ["key", "created_at"]
+    search_fields = ["token", "pos__name"]
+    readonly_fields = ["token", "created_at"]
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
-        if '_gen_key' in request.POST:
+        if '_gen_token' in request.POST:
             pos_token = self.get_object(request, object_id)
             if pos_token:
-                new_token = uuid.uuid4()
-                pos_token.key = new_token
-                pos_token.save(update_fields=['key'])
+                new_token = str(uuid.uuid4())
+                pos_token.token = new_token
+                pos_token.save(update_fields=["token"])
                 self.message_user(request, f"Новый токен сгенерирован: {new_token}")
                 logger.info(f"Token for POS {pos_token.pos.name} (id={pos_token.pos.id}) was changed")
             return HttpResponseRedirect(request.path)
@@ -67,8 +67,8 @@ class ProductAdmin(SimpleHistoryAdmin):
 
 @admin.register(Stock)
 class StockAdmin(SimpleHistoryAdmin):
-    list_display = ["product", "pos", "quantity", "available_for_sale"]
-    list_filter = ["pos", "available_for_sale"]
+    list_display = ["product", "pos", "quantity", "is_active"]
+    list_filter = ["pos", "is_active"]
     search_fields = ["product__name", "pos__name"]
 
     def has_delete_permission(self, request, obj=None):
@@ -110,7 +110,6 @@ class OrderAdmin(admin.ModelAdmin):
             order_flow = OrderFlow(order)
             order_flow.archive()
             self.message_user(request, "Заказ отправлен в архив!")
-            logger.info(f"Order {order.id} was archivated")
             return HttpResponseRedirect(request.path)
         return super().change_view(request, object_id, form_url, extra_context)
 
@@ -123,9 +122,9 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ["id", "order", "payment_type", "state", "processed_at"]
+    list_display = ["id", "order", "type", "state", "processed_at"]
     list_display_links = ["id", "order"]
-    list_filter = ["state", "payment_type"]
+    list_filter = ["state", "type"]
     search_fields = ["order__id"]
 
     def has_change_permission(self, request, obj=None):

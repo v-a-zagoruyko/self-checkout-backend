@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 from simple_history.models import HistoricalRecords
 
 
@@ -7,7 +8,7 @@ class PointOfSale(models.Model):
     name = models.CharField("Название", max_length=255)
     code = models.CharField("Код точки", max_length=50, unique=True)
     location = models.CharField("Местоположение", max_length=255, blank=True)
-    status = models.BooleanField("Активна", default=True)
+    is_active = models.BooleanField("Активна", default=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлено", auto_now=True)
     history = HistoricalRecords()
@@ -21,8 +22,8 @@ class PointOfSale(models.Model):
 
 
 class PointOfSaleToken(models.Model):
-    pos = models.OneToOneField(PointOfSale, verbose_name="Точка продаж", on_delete=models.CASCADE, related_name="api_token")
-    key = models.CharField("Токен", max_length=40, unique=True, default=uuid.uuid4)
+    pos = models.OneToOneField("PointOfSale", verbose_name="Точка продаж", on_delete=models.CASCADE, related_name="api_token")
+    token = models.CharField("Токен", max_length=40, unique=True, default=uuid.uuid4())
     created_at = models.DateTimeField("Создано", auto_now_add=True)
 
     class Meta:
@@ -65,8 +66,8 @@ class Product(models.Model):
 class Stock(models.Model):
     pos = models.ForeignKey(PointOfSale, verbose_name="Точка продаж", on_delete=models.CASCADE, related_name="stocks")
     product = models.ForeignKey(Product, verbose_name="Товар", on_delete=models.CASCADE, related_name="stocks")
-    quantity = models.PositiveIntegerField("Количество", default=0)
-    available_for_sale = models.BooleanField("Доступно к продаже", default=True)
+    quantity = models.IntegerField("Количество", default=0)
+    is_active = models.BooleanField("Доступно к продаже", default=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -85,12 +86,7 @@ class Order(models.Model):
         CANCELLED = 'CANCELLED', 'Отменён'
         ARCHIEVE = 'ARCHIEVE', 'Архивирован'
 
-    state = models.CharField(
-        "Статус",
-        max_length=150,
-        choices=OrderState.choices,
-        default=OrderState.CREATED
-    )
+    state = models.CharField("Статус", max_length=150, choices=OrderState.choices, default=OrderState.CREATED)
     pos = models.ForeignKey(PointOfSale, verbose_name="Точка продаж", on_delete=models.PROTECT, related_name="orders")
     total_price = models.DecimalField("Итоговая сумма", max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField("Создано", auto_now_add=True)
@@ -100,6 +96,11 @@ class Order(models.Model):
     class Meta:
         verbose_name = "Заказ"
         verbose_name_plural = "Заказы"
+
+    def recalculate_total(self):
+        total = sum(item.total_price for item in self.items.all())
+        self.total_price = total
+        self.save(update_fields=["total_price"])
 
     def __str__(self):
         return f"Заказ №{self.id} на {self.pos}"
@@ -119,6 +120,11 @@ class OrderItem(models.Model):
     def save(self, *args, **kwargs):
         self.total_price = self.quantity * self.price
         super().save(*args, **kwargs)
+        self.order.recalculate_total()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self.order.recalculate_total()
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
@@ -150,8 +156,8 @@ class Payment(models.Model):
 
     order = models.ForeignKey("Order", verbose_name="Заказ", on_delete=models.CASCADE, related_name="payments")
     state = models.CharField("Статус", max_length=20, choices=PaymentState.choices, default=PaymentState.PENDING)
-    payment_type = models.CharField("Метод оплаты", max_length=20, choices=PAYMENT_METHODS)
-    payment_url = models.URLField("Ссылка на оплату (эквайринг)", blank=True, null=True)
+    type = models.CharField("Метод оплаты", max_length=20, choices=PAYMENT_METHODS)
+    link = models.URLField("Ссылка на оплату (эквайринг)", blank=True, null=True)
     processed_at = models.DateTimeField("Дата обработки", auto_now_add=True)
     history = HistoricalRecords()
 

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from pos.models import Product, Stock, Order, OrderItem
 
+
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(read_only=True, slug_field="name")
     quantity = serializers.SerializerMethodField()
@@ -16,9 +17,11 @@ class ProductSerializer(serializers.ModelSerializer):
             return stock.quantity if stock else 0
         return 0
 
+
 class OrderItemCreateSerializer(serializers.Serializer):
-    barcode = serializers.IntegerField()
+    barcode = serializers.CharField()
     quantity = serializers.IntegerField(min_value=1)
+
 
 class OrderCreateSerializer(serializers.Serializer):
     pos_code = serializers.CharField()
