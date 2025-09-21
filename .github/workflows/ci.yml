@@ -1,4 +1,4 @@
-name: Self Checkout Backend CI
+name: Django CI
 
 on:
   push:
@@ -10,27 +10,74 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: self_checkout
+          POSTGRES_USER: self_checkout_user
+          POSTGRES_PASSWORD: self_checkout_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U self_checkout_user -d self_checkout -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DJANGO_SECRET_KEY: test_key
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: "*"
+
+      POSTGRES_DB: self_checkout
+      POSTGRES_USER: self_checkout_user
+      POSTGRES_PASSWORD: self_checkout_pass
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "True"
+
+      ROLLBAR_TOKEN: dummy
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Build Docker images
-        run: docker compose -f docker-compose.ci.yml build
+      - name: Install Poetry
+        run: pip install poetry
 
-      - name: Start services
-        run: docker compose -f docker-compose.ci.yml up -d
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --no-root --no-interaction --no-ansi
 
-      - name: Install dependencies in container
-        run: docker compose run --rm web poetry install --no-root --no-interaction --no-ansi
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U self_checkout_user -d self_checkout; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
 
       - name: Run migrations
-        run: docker compose run --rm web python manage.py migrate --noinput
+        run: python manage.py migrate --noinput
 
       - name: Run tests
-        run: docker compose run --rm web pytest --tb=short -o log_cli=true --cov=.
-
-      - name: Tear down
-        run: docker compose -f docker-compose.ci.yml down -v
+        run: pytest -v
