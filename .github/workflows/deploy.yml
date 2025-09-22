@@ -7,7 +7,7 @@ on:
       - completed
 
 jobs:
-  deploy:
+  build-and-push:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
@@ -24,9 +24,14 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: ./Dockerfile.prod
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/self-checkout-backend:latest
 
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v0.1.8
         with:
@@ -37,5 +42,5 @@ jobs:
           passphrase: ''
           script: |
             cd /srv/self-checkout-backend
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
