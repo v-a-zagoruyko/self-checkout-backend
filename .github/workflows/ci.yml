@@ -39,17 +39,14 @@ jobs:
       DJANGO_SECRET_KEY: test_key
       DJANGO_DEBUG: "True"
       DJANGO_ALLOWED_HOSTS: "*"
-
       POSTGRES_DB: self_checkout
       POSTGRES_USER: self_checkout_user
       POSTGRES_PASSWORD: self_checkout_pass
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-
       CELERY_BROKER_URL: redis://localhost:6379/0
       CELERY_RESULT_BACKEND: redis://localhost:6379/0
       CELERY_TASK_ALWAYS_EAGER: "True"
-
       ROLLBAR_TOKEN: dummy
 
     steps:
