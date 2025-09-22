@@ -20,6 +20,7 @@ RUN adduser --disabled-password --gecos "" app \
     && chmod +x /app/deploy/entrypoint.sh
 
 USER app
+RUN mkdir -p /app/staticfiles && chown -R app:app /app/staticfiles
 
 ENV PORT=8000
 ENV GUNICORN_WORKERS=3
