@@ -34,6 +34,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          passphrase: ''
           script: |
             cd /srv/self-checkout-backend
             docker compose pull
