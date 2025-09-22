@@ -15,7 +15,6 @@ RUN poetry config virtualenvs.create false \
 
 COPY . .
 
-# Создаём пользователя и меняем владельца на весь /app
 RUN adduser --disabled-password --gecos "" app \
     && chown -R app:app /app \
     && chmod +x /app/deploy/entrypoint.sh

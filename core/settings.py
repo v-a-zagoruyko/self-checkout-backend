@@ -102,7 +102,7 @@ else:
         "https://another-frontend.com",
     ]
     CORS_ALLOW_CREDENTIALS = True
-    CORS_ALLOW_HEADERS = list(default_headers) + [
+    CORS_ALLOW_HEADERS = [
         "Authorization",
     ]
 
