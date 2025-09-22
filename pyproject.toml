@@ -24,6 +24,7 @@ pytest-django = "^4.11.1"
 factory-boy = "^3.3.3"
 pytest-cov = "^7.0.0"
 django-cors-headers = "^4.9.0"
+gunicorn = "^23.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.0"
