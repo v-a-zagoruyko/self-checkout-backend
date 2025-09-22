@@ -22,7 +22,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/self_checkout:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/self-checkout-backend:latest
 
   deploy:
     needs: build-and-push
@@ -36,6 +36,6 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /srv/self_checkout
+            cd /srv/self-checkout-backend
             docker compose pull
             docker compose up -d --remove-orphans
