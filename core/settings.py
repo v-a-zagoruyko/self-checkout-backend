@@ -96,6 +96,7 @@ AUTH_PASSWORD_VALIDATORS = [
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
+    STATIC_ROOT = BASE_DIR / "staticfiles"
     CORS_ALLOWED_ORIGINS = [
         "https://myfrontend.com",
         "https://another-frontend.com",
