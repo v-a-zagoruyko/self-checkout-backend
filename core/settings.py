@@ -1,4 +1,5 @@
 import os
+import re
 import environ
 from pathlib import Path
 from celery.schedules import crontab
@@ -150,6 +151,7 @@ ROLLBAR = {
     "environment": "development" if DEBUG else "production",
     "code_version": "1.0",
     "root": BASE_DIR,
+    'ignorable_404_urls': (re.compile(r'.*\.(php|asp|aspx|cgi|bak|old|sql|tar|gz)$'),,),
 }
 
 LANGUAGE_CODE = "ru-ru"
