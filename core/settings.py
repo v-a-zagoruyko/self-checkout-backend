@@ -3,6 +3,7 @@ import re
 import environ
 from pathlib import Path
 from celery.schedules import crontab
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -104,9 +105,7 @@ else:
         "http://localhost:5173",
     ]
     CORS_ALLOW_CREDENTIALS = True
-    CORS_ALLOW_HEADERS = [
-        "Authorization",
-    ]
+    CORS_ALLOW_HEADERS = list(default_headers) + ["Authorization"]
 
 CELERY_BEAT_SCHEDULE = {
     "archive-created-orders-every-hour": {
