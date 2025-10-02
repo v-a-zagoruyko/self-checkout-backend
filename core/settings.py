@@ -98,10 +98,11 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     STATIC_ROOT = BASE_DIR / "staticfiles"
-    CORS_ALLOWED_ORIGINS = [
-        "https://myfrontend.com",
-        "https://another-frontend.com",
-    ]
+    CORS_ALLOW_ALL_ORIGINS = True
+    # CORS_ALLOWED_ORIGINS = [
+    #     "https://myfrontend.com",
+    #     "https://another-frontend.com",
+    # ]
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = [
         "Authorization",
