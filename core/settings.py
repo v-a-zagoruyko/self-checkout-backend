@@ -151,7 +151,24 @@ ROLLBAR = {
     "environment": "development" if DEBUG else "production",
     "code_version": "1.0",
     "root": BASE_DIR,
-    "ignorable_404_urls": (re.compile(r'.*\.(php|asp|aspx|cgi|bak|old|sql|tar|gz)$'),),
+    "ignorable_404_urls": (
+        re.compile(r'.*\.(json|env|php|asp|aspx|cgi|bak|old|sql|tar|gz)$'),
+        re.compile(r'^/index\.php$'),
+        re.compile(r'^/xmlrpc\.php$'),
+        re.compile(r'^/wp-.*'),
+        re.compile(r'^/vendor/.*'),
+        re.compile(r'^/sites/.*'),
+        re.compile(r'^/cms/.*'),
+        re.compile(r'^/client/.*'),
+        re.compile(r'^/library/.*'),
+        re.compile(r'^/download/.*'),
+        re.compile(r'^/sendgrid/.*'),
+        re.compile(r'^/docs/.*'),
+        re.compile(r'^/old/.*'),
+        re.compile(r'^/new/.*'),
+        re.compile(r'^/v\d+/.*'),
+        re.compile(r'^/tr/.*'),
+    ),
 }
 
 LANGUAGE_CODE = "ru-ru"
