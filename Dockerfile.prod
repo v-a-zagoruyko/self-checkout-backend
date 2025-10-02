@@ -27,4 +27,4 @@ ENV GUNICORN_WORKERS=3
 
 EXPOSE 8000
 
-CMD ["/bin/sh", "/app/deploy/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/deploy/entrypoint.sh"]
