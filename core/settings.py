@@ -101,7 +101,7 @@ else:
     CORS_ALLOWED_ORIGINS = [
         "https://myfrontend.com",
         "https://another-frontend.com",
-        "http://localhost:5173/",
+        "http://localhost:5173",
     ]
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = [
