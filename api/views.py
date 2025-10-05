@@ -60,6 +60,7 @@ def create_order(request):
             for item_data in order_items_data:
                 product = Product.objects.select_for_update().filter(barcode=item_data['barcode']).first()
                 if not product:
+                    logger.warning(f"Продукт с штрихкодом {item_data['barcode']} не найден")
                     raise serializers.ValidationError(f"Продукт с штрихкодом {item_data['barcode']} не найден")
                 stock = Stock.objects.select_for_update().filter(pos=pos, product=product).first()
                 if not stock or stock.quantity < item_data['quantity'] or not stock.is_active:

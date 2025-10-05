@@ -8,6 +8,7 @@ from pos.models import Order, OrderItem, Payment, Category, Product, Stock, Poin
 class PointOfSaleFactory(factory.django.DjangoModelFactory):
 	class Meta:
 		model = PointOfSale
+
 	name = factory.Sequence(lambda n: f"POS {n}")
 	code = factory.Sequence(lambda n: str(uuid.uuid4()))
 
@@ -30,6 +31,7 @@ class CategoryFactory(factory.django.DjangoModelFactory):
 class ProductFactory(factory.django.DjangoModelFactory):
 	class Meta:
 		model = Product
+
 	name = factory.Sequence(lambda n: f"Product {n}")
 	price = Decimal('100.00')
 	category = factory.SubFactory(CategoryFactory)
@@ -50,6 +52,7 @@ class StockFactory(factory.django.DjangoModelFactory):
 class OrderFactory(factory.django.DjangoModelFactory):
 	class Meta:
 		model = Order
+
 	pos = factory.SubFactory(PointOfSaleFactory)
 	state = Order.OrderState.CREATED
 	created_at = factory.LazyFunction(timezone.now)
@@ -58,6 +61,7 @@ class OrderFactory(factory.django.DjangoModelFactory):
 class OrderItemFactory(factory.django.DjangoModelFactory):
 	class Meta:
 		model = OrderItem
+
 	order = factory.SubFactory(OrderFactory)
 	product = factory.SubFactory(ProductFactory)
 	quantity = 1
