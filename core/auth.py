@@ -1,18 +1,11 @@
 import logging
+from django.contrib.auth import get_user_model
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from pos.models import PointOfSaleToken
 
 logger = logging.getLogger(__name__)
-
-
-class POSUserWrapper:
-    def __init__(self, pos):
-        self.pos = pos
-
-    @property
-    def is_authenticated(self):
-        return True
+User = get_user_model()
 
 
 class POSTokenAuthentication(BaseAuthentication):
@@ -37,5 +30,15 @@ class POSTokenAuthentication(BaseAuthentication):
             logger.warning("Invalid POS token attempted authentication")
             raise AuthenticationFailed("Токен недействителен")
 
-        logger.info("POS authenticated", extra={"pos_id": pos_token.pos.id, "pos_name": pos_token.pos.name})
-        return (POSUserWrapper(pos_token.pos), None)
+        pos_user, _ = User.objects.get_or_create(
+            username="pos_system",
+            defaults={"is_active": True, "is_staff": False, "is_superuser": False},
+        )
+
+        logger.info(
+            "POS authenticated",
+            extra={"pos_id": pos_token.pos.id, "pos_name": pos_token.pos.name}
+        )
+
+        pos_user.pos = pos_token.pos
+        return (pos_user, None)
